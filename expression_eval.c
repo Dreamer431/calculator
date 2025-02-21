@@ -1,6 +1,6 @@
 #include "calculator.h"
 
-double evaluateExpression(const char* expr) {
+double evaluateExpression(const char* expr, AngleMode mode) {
     double numbers[MAX_EXPR];  // 数字栈
     char operators[MAX_EXPR];  // 运算符栈
     int numTop = -1;          // 数字栈顶
@@ -13,6 +13,59 @@ double evaluateExpression(const char* expr) {
         if (*expr == ' ') {
             expr++;
             continue;
+        }
+        
+        // 检查是否是函数
+        if (isalpha(*expr)) {
+            FuncType func = getFunction(&expr);
+            if (func != FUNC_NONE) {
+                // 跳过空格
+                while (*expr == ' ') expr++;
+                
+                // 必须跟着左括号
+                if (*expr != '(') {
+                    printf("错误：函数后必须跟着括号！\n");
+                    exit(1);
+                }
+                
+                // 处理括号内的表达式
+                expr++; // 跳过左括号
+                const char* endExpr = expr;
+                int bracketCount = 1;
+                
+                // 找到对应的右括号
+                while (bracketCount > 0 && *endExpr) {
+                    if (*endExpr == '(') bracketCount++;
+                    if (*endExpr == ')') bracketCount--;
+                    endExpr++;
+                }
+                
+                if (bracketCount > 0) {
+                    printf("错误：括号不匹配！\n");
+                    exit(1);
+                }
+                
+                // 计算括号内的表达式
+                char* subExpr = (char*)malloc(endExpr - expr);
+                strncpy(subExpr, expr, endExpr - expr - 1);
+                subExpr[endExpr - expr - 1] = '\0';
+                
+                double value = evaluateExpression(subExpr, mode);
+                free(subExpr);
+                
+                numbers[++numTop] = calculateFunction(func, value, mode);
+                expr = endExpr;  // 移动到右括号后
+                lastWasNumber = 1;
+                continue;
+            }
+            
+            // 检查是否是 pi
+            if (strncmp(expr, "pi", 2) == 0) {
+                numbers[++numTop] = PI;
+                expr += 2;
+                lastWasNumber = 1;
+                continue;
+            }
         }
         
         // 如果是数字
