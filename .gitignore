@@ -4,6 +4,11 @@
 build/
 obj/
 
+# 忽略测试相关文件
+test_calculator
+test_calculator.exe
+test_*.o
+
 # 忽略IDE和编辑器的配置文件
 .vscode/
 .vs/

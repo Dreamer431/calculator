@@ -9,12 +9,27 @@
 #include <windows.h>
 #include <float.h>
 
+// 错误处理结构
+typedef struct {
+    int code;
+    const char* message;
+} CalcError;
+
+#define CALC_SUCCESS ((CalcError){0, NULL})
+#define CALC_ERROR(msg) ((CalcError){1, msg})
+
 // 常量定义
 #define MAX_EXPR 100
 #define PRECISION 10
 #define PI 3.14159265358979323846
 #define INFINITY_THRESHOLD 1e15
 #define EPSILON 1e-10
+
+// 运算符优先级
+#define PRIORITY_ADD 1    // + -
+#define PRIORITY_MUL 2    // * /
+#define PRIORITY_POW 3    // ^
+#define PRIORITY_PAR 0    // (
 
 // 角度模式
 typedef enum {
@@ -34,7 +49,9 @@ typedef enum {
 } FuncType;
 
 // 函数声明
-double evaluateExpression(const char* expr, AngleMode mode);
+CalcError evaluateExpression(const char* expr, AngleMode mode, double* result);
+CalcError getNumberWithError(const char** expr, double* result);
+CalcError calculateFunctionWithError(FuncType func, double value, AngleMode mode, double* result);
 double getNumber(const char** expr);
 int getPriority(char op);
 FuncType getFunction(const char** expr);

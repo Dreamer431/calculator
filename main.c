@@ -43,10 +43,13 @@ int main() {
         }
         
         // 计算结果
-        double result = evaluateExpression(expression, mode);
+        double result;
+        CalcError err = evaluateExpression(expression, mode, &result);
         
         // 显示结果
-        if (isUndefined(result)) {
+        if (err.code != 0) {
+            printf("错误：%s\n", err.message);
+        } else if (isUndefined(result)) {
             printf("%s = 未定义\n", expression);
         } else if (isInfinite(result)) {
             printf("%s = %s无穷大\n", expression, result > 0 ? "" : "-");
