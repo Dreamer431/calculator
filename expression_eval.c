@@ -78,17 +78,46 @@ static CalcError checkBracketMatch(const char* expr) {
     return CALC_SUCCESS;
 }
 
+// 获取错误描述
+const char* getErrorDescription(int errorCode) {
+    switch (errorCode) {
+        case 0:  // ERR_SUCCESS
+            return "操作成功";
+        case 1:  // ERR_SYNTAX
+            return "语法错误";
+        case ERR_DIV_BY_ZERO:
+            return "除数不能为零";
+        case ERR_INVALID_NUMBER:
+            return "无效的数字格式";
+        case ERR_OVERFLOW:
+            return "数值溢出";
+        case ERR_UNDEFINED:
+            return "结果未定义";
+        case ERR_INVALID_FUNCTION:
+            return "无效的函数";
+        case ERR_INVALID_ARGUMENT:
+            return "无效的参数";
+        case ERR_STACK_OVERFLOW:
+            return "表达式过于复杂";
+        case ERR_MISSING_PARENTHESIS:
+            return "括号不匹配";
+        case ERR_EMPTY_EXPRESSION:
+            return "表达式不能为空";
+        default:
+            return "未知错误";
+    }
+}
+
 // 主函数修改为返回错误信息
 CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
+    if (!expr || !*expr) {
+        return CALC_ERROR("表达式不能为空");
+    }
+
     // 首先检查括号匹配
     CalcError bracketErr = checkBracketMatch(expr);
     if (bracketErr.code != 0) {
         return bracketErr;
-    }
-
-    // 检查表达式是否为空
-    if (!*expr) {
-        return CALC_ERROR("表达式不能为空");
     }
 
     // 检查表达式结尾
