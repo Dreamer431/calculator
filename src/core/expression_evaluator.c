@@ -1,117 +1,9 @@
 #include "calculator.h"
 
-// 检查栈是否会溢出
-static CalcError checkStackOverflow(int top, const char* stackName) {
-    if (top >= MAX_EXPR - 1) {
-        char errorMsg[100];
-        snprintf(errorMsg, sizeof(errorMsg), "%s溢出，表达式过于复杂", stackName);
-        return CALC_ERROR(errorMsg);
-    }
-    return CALC_SUCCESS;
-}
-
-// 抽取运算符计算逻辑
-static CalcError performOperation(char op, double a, double b, double* result) {
-    switch (op) {
-        case '+': *result = a + b; break;
-        case '-': *result = a - b; break;
-        case '*': *result = a * b; break;
-        case '/':
-            if (b == 0) {
-                return CALC_ERROR("除数不能为0");
-            }
-            *result = a / b;
-            break;
-        case '^':
-            *result = pow(a, b);
-            break;
-        default:
-            return CALC_ERROR("未知的运算符");
-    }
-    return CALC_SUCCESS;
-}
-
-// 处理运算符栈的计算
-static CalcError processOperators(double* numbers, int* numTop, 
-                                char* operators, int* opTop, 
-                                char stopAt, int minPriority) {
-    while (*opTop >= 0 && operators[*opTop] != stopAt && 
-           getPriority(operators[*opTop]) >= minPriority) {
-        double b = numbers[(*numTop)--];
-        double a = numbers[(*numTop)--];
-        char op = operators[(*opTop)--];
-        
-        double result;
-        CalcError err = performOperation(op, a, b, &result);
-        if (err.code != 0) return err;
-        
-        numbers[++(*numTop)] = result;
-    }
-    return CALC_SUCCESS;
-}
-
-// 检查括号是否匹配
-static CalcError checkBracketMatch(const char* expr) {
-    int count = 0;
-    int maxDepth = 0;
-    const char* p = expr;
-    
-    while (*p) {
-        if (*p == '(') {
-            count++;
-            if (count > maxDepth) maxDepth = count;
-            if (maxDepth > 10) {  // 限制括号嵌套深度
-                return CALC_ERROR("表达式过于复杂");
-            }
-        } else if (*p == ')') {
-            count--;
-            if (count < 0) {
-                return CALC_ERROR("括号不匹配：右括号过多");
-            }
-        }
-        p++;
-    }
-    
-    if (count > 0) {
-        return CALC_ERROR("括号不匹配：左括号过多");
-    }
-    return CALC_SUCCESS;
-}
-
-// 获取错误描述
-const char* getErrorDescription(int errorCode) {
-    switch (errorCode) {
-        case 0:  // ERR_SUCCESS
-            return "操作成功";
-        case 1:  // ERR_SYNTAX
-            return "语法错误";
-        case ERR_DIV_BY_ZERO:
-            return "除数不能为零";
-        case ERR_INVALID_NUMBER:
-            return "无效的数字格式";
-        case ERR_OVERFLOW:
-            return "数值溢出";
-        case ERR_UNDEFINED:
-            return "结果未定义";
-        case ERR_INVALID_FUNCTION:
-            return "无效的函数";
-        case ERR_INVALID_ARGUMENT:
-            return "无效的参数";
-        case ERR_STACK_OVERFLOW:
-            return "表达式过于复杂";
-        case ERR_MISSING_PARENTHESIS:
-            return "括号不匹配";
-        case ERR_EMPTY_EXPRESSION:
-            return "表达式不能为空";
-        default:
-            return "未知错误";
-    }
-}
-
 // 主函数修改为返回错误信息
 CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
     if (!expr || !*expr) {
-        return CALC_ERROR("表达式不能为空");
+        return CALC_ERROR_CODE(ERR_EMPTY_EXPRESSION, "表达式不能为空");
     }
 
     // 首先检查括号匹配
@@ -122,9 +14,13 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
 
     // 检查表达式结尾
     const char* lastChar = expr + strlen(expr) - 1;
-    while (lastChar > expr && *lastChar == ' ') lastChar--;
+    int lastCharPos = strlen(expr) - 1;
+    while (lastChar > expr && *lastChar == ' ') {
+        lastChar--;
+        lastCharPos--;
+    }
     if (*lastChar == '+' || *lastChar == '-' || *lastChar == '*' || *lastChar == '/') {
-        return CALC_ERROR("表达式不能以运算符结尾");
+        return CALC_ERROR_POS("表达式不能以运算符结尾", lastCharPos);
     }
 
     double numbers[MAX_EXPR];  // 数字栈
@@ -134,18 +30,23 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
     int lastWasNumber = 0;    // 标记上一个token是否为数字
     CalcError err = CALC_SUCCESS;
     
+    // 用于跟踪当前位置
+    const char* current_pos = expr;
+    int position = 0;
+    
     // 处理表达式
-    while (*expr) {
+    while (*current_pos) {
         // 跳过空格
-        if (*expr == ' ') {
-            expr++;
+        if (*current_pos == ' ') {
+            current_pos++;
+            position++;
             continue;
         }
         
         // 检查是否是函数或常量
-        if (isalpha(*expr)) {
+        if (isalpha(*current_pos)) {
             // 检查是否是 pi
-            if (strncmp(expr, "pi", 2) == 0 && (!expr[2] || !isalpha(expr[2]))) {
+            if (strncmp(current_pos, "pi", 2) == 0 && (!current_pos[2] || !isalpha(current_pos[2]))) {
                 // 如果前一个是数字或右括号，插入乘号
                 if (lastWasNumber) {
                     while (opTop >= 0 && operators[opTop] != '(' && 
@@ -167,25 +68,53 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                 err = checkStackOverflow(numTop + 1, "数字栈");
                 if (err.code != 0) return err;
                 numbers[++numTop] = PI;
-                expr += 2;
+                current_pos += 2;
+                lastWasNumber = 1;
+                continue;
+            }
+            
+            // 检查是否是 e（自然对数的底）
+            if (*current_pos == 'e' && (!current_pos[1] || !isalpha(current_pos[1]))) {
+                // 如果前一个是数字或右括号，插入乘号
+                if (lastWasNumber) {
+                    while (opTop >= 0 && operators[opTop] != '(' && 
+                           getPriority(operators[opTop]) >= getPriority('*')) {
+                        double b = numbers[numTop--];
+                        double a = numbers[numTop--];
+                        char op = operators[opTop--];
+                        
+                        double result;
+                        CalcError err = performOperation(op, a, b, &result);
+                        if (err.code != 0) return err;
+                        
+                        numbers[++numTop] = result;
+                    }
+                    err = checkStackOverflow(opTop + 1, "运算符栈");
+                    if (err.code != 0) return err;
+                    operators[++opTop] = '*';
+                }
+                err = checkStackOverflow(numTop + 1, "数字栈");
+                if (err.code != 0) return err;
+                numbers[++numTop] = E;
+                current_pos++;
                 lastWasNumber = 1;
                 continue;
             }
             
             // 检查是否是函数
-            FuncType func = getFunction(&expr);
+            FuncType func = getFunction(&current_pos);
             if (func != FUNC_NONE) {
                 // 跳过空格
-                while (*expr == ' ') expr++;
+                while (*current_pos == ' ') current_pos++;
                 
                 // 必须跟着左括号
-                if (*expr != '(') {
-                    return CALC_ERROR("函数后必须跟着括号！");
+                if (*current_pos != '(') {
+                    return CALC_ERROR_POS("函数后必须跟着括号！", position);
                 }
                 
                 // 处理括号内的表达式
-                expr++; // 跳过左括号
-                const char* endExpr = expr;
+                current_pos++; // 跳过左括号
+                const char* endExpr = current_pos;
                 int bracketCount = 1;
                 
                 // 找到对应的右括号
@@ -196,16 +125,16 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                 }
                 
                 if (bracketCount > 0) {
-                    return CALC_ERROR("括号不匹配！");
+                    return CALC_ERROR_POS("括号不匹配！", position);
                 }
                 
                 // 计算括号内的表达式
-                size_t len = endExpr - expr - 1;  // 减1是为了不包含右括号
+                size_t len = endExpr - current_pos - 1;  // 减1是为了不包含右括号
                 char* subExpr = (char*)malloc(len + 1);  // +1 用于存储 \0
                 if (subExpr == NULL) {
-                    return CALC_ERROR("内存分配失败");
+                    return CALC_ERROR_POS("内存分配失败", position);
                 }
-                strncpy(subExpr, expr, len);
+                strncpy(subExpr, current_pos, len);
                 subExpr[len] = '\0';
                 
                 double value;
@@ -216,58 +145,28 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                     return subExprErr;
                 }
                 
+                // 计算函数值
                 double funcResult;
                 CalcError funcErr = calculateFunctionWithError(func, value, mode, &funcResult);
                 if (funcErr.code != 0) {
+                    funcErr.position = position; // 更新错误位置
                     return funcErr;
                 }
                 
                 err = checkStackOverflow(numTop + 1, "数字栈");
                 if (err.code != 0) return err;
                 numbers[++numTop] = funcResult;
-                expr = endExpr;  // 移动到右括号后
-                lastWasNumber = 1;
+                
+                current_pos = endExpr;
+                lastWasNumber = 1;  // 函数计算结果视为一个数字
                 continue;
+            } else {
+                return CALC_ERROR_POS("无效的字符", position);
             }
-            
-            // 如果不是函数也不是pi，则是无效字符
-            return CALC_ERROR("无效的字符");
         }
         
-        // 如果是数字
-        if (isdigit(*expr) || *expr == '.') {
-            // 如果前一个是右括号，插入乘号
-            if (lastWasNumber) {
-                while (opTop >= 0 && operators[opTop] != '(' && 
-                       getPriority(operators[opTop]) >= getPriority('*')) {
-                    double b = numbers[numTop--];
-                    double a = numbers[numTop--];
-                    char op = operators[opTop--];
-                    
-                    double result;
-                    CalcError err = performOperation(op, a, b, &result);
-                    if (err.code != 0) return err;
-                    
-                    numbers[++numTop] = result;
-                }
-                err = checkStackOverflow(opTop + 1, "运算符栈");
-                if (err.code != 0) return err;
-                operators[++opTop] = '*';
-            }
-            double num;
-            CalcError numErr = getNumberWithError(&expr, &num);
-            if (numErr.code != 0) {
-                return numErr;
-            }
-            err = checkStackOverflow(numTop + 1, "数字栈");
-            if (err.code != 0) return err;
-            numbers[++numTop] = num;
-            lastWasNumber = 1;
-            continue;
-        }
-        
-        // 如果是左括号
-        if (*expr == '(') {
+        // 如果是数字或小数点
+        if (isdigit(*current_pos) || *current_pos == '.') {
             // 如果前一个是数字或右括号，插入乘号
             if (lastWasNumber) {
                 while (opTop >= 0 && operators[opTop] != '(' && 
@@ -286,20 +185,58 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                 if (err.code != 0) return err;
                 operators[++opTop] = '*';
             }
+            
+            // 获取数字
+            double num;
+            CalcError numErr = getNumberWithError(&current_pos, &num);
+            if (numErr.code != 0) {
+                numErr.position += position;  // 更新错误位置
+                return numErr;
+            }
+            
+            // 添加到数字栈
+            err = checkStackOverflow(numTop + 1, "数字栈");
+            if (err.code != 0) return err;
+            numbers[++numTop] = num;
+            lastWasNumber = 1;
+            continue;
+        }
+        
+        // 如果是左括号
+        if (*current_pos == '(') {
+            // 如果前一个是数字或右括号，插入乘号
+            if (lastWasNumber) {
+                while (opTop >= 0 && operators[opTop] != '(' && 
+                       getPriority(operators[opTop]) >= getPriority('*')) {
+                    double b = numbers[numTop--];
+                    double a = numbers[numTop--];
+                    char op = operators[opTop--];
+                    
+                    double result;
+                    CalcError err = performOperation(op, a, b, &result);
+                    if (err.code != 0) return err;
+                    
+                    numbers[++numTop] = result;
+                }
+                err = checkStackOverflow(opTop + 1, "运算符栈");
+                if (err.code != 0) return err;
+                operators[++opTop] = '*';
+            }
+            
             err = checkStackOverflow(opTop + 1, "运算符栈");
             if (err.code != 0) return err;
-            operators[++opTop] = *expr;
-            expr++;
+            operators[++opTop] = *current_pos;
+            current_pos++;
             lastWasNumber = 0;
             continue;
         }
         
         // 如果是右括号
-        if (*expr == ')') {
+        if (*current_pos == ')') {
             // 检查空括号
             if (opTop >= 0 && operators[opTop] == '(' && 
-                (numTop < 0 || (expr[-1] == '(' && !lastWasNumber))) {
-                return CALC_ERROR("括号内必须有表达式");
+                (numTop < 0 || (current_pos[-1] == '(' && !lastWasNumber))) {
+                return CALC_ERROR_POS("括号内必须有表达式", position);
             }
             
             // 计算括号内的所有运算
@@ -310,31 +247,38 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
             if (opTop >= 0 && operators[opTop] == '(') {
                 opTop--;  // 移除左括号
             } else {
-                return CALC_ERROR("括号不匹配！");
+                return CALC_ERROR_POS("括号不匹配！", position);
             }
-            expr++;
+            current_pos++;
             lastWasNumber = 1;  // 括号计算完的结果视为一个数字
             continue;
         }
         
         // 如果是运算符
-        if (*expr == '+' || *expr == '-' || *expr == '*' || *expr == '/' || *expr == '^') {
+        if (*current_pos == '+' || *current_pos == '-' || *current_pos == '*' || *current_pos == '/' || *current_pos == '^') {
             // 检查连续运算符，但允许负号出现在表达式开头或左括号后
-            if (!lastWasNumber && *expr == '-' && (isdigit(expr[1]) || expr[1] == '.' || 
-                (expr[1] == 'p' && expr[2] == 'i'))) {
+            if (!lastWasNumber && *current_pos == '-' && (isdigit(current_pos[1]) || current_pos[1] == '.' || 
+                (current_pos[1] == 'p' && current_pos[2] == 'i') || current_pos[1] == 'e')) {
                 // 处理负数
-                expr++;  // 跳过负号
-                if (expr[0] == 'p' && expr[1] == 'i') {
+                current_pos++;  // 跳过负号
+                if (current_pos[0] == 'p' && current_pos[1] == 'i') {
                     // 处理 -pi
                     err = checkStackOverflow(numTop + 1, "数字栈");
                     if (err.code != 0) return err;
                     numbers[++numTop] = -PI;
-                    expr += 2;
+                    current_pos += 2;
+                    lastWasNumber = 1;
+                } else if (current_pos[0] == 'e' && (!current_pos[1] || !isalpha(current_pos[1]))) {
+                    // 处理 -e
+                    err = checkStackOverflow(numTop + 1, "数字栈");
+                    if (err.code != 0) return err;
+                    numbers[++numTop] = -E;
+                    current_pos++;
                     lastWasNumber = 1;
                 } else {
                     // 处理负数
                     double num;
-                    CalcError numErr = getNumberWithError(&expr, &num);
+                    CalcError numErr = getNumberWithError(&current_pos, &num);
                     if (numErr.code != 0) {
                         return numErr;
                     }
@@ -346,57 +290,39 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                 continue;
             }
             
-            if (!lastWasNumber && *expr != '-') {
-                return CALC_ERROR("运算符使用不正确");
+            if (!lastWasNumber && *current_pos != '-') {
+                return CALC_ERROR_POS("运算符使用不正确", position);
             }
             
-            char currentOp = *expr;
-            int currentPriority = getPriority(currentOp);
+            char currentOp = *current_pos;
             
-            // 处理栈中的运算符
-            while (opTop >= 0 && operators[opTop] != '(') {
-                // 幂运算是右结合的，其他运算符是左结合的
-                if (currentOp == '^' && operators[opTop] == '^') {
-                    break;  // 遇到连续的幂运算，保持在栈中
-                }
-                if (getPriority(operators[opTop]) >= currentPriority) {
-                    double b = numbers[numTop--];
-                    double a = numbers[numTop--];
-                    char op = operators[opTop--];
-                    
-                    double result;
-                    CalcError err = performOperation(op, a, b, &result);
-                    if (err.code != 0) return err;
-                    
-                    numbers[++numTop] = result;
-                } else {
-                    break;
-                }
-            }
+            // 检查是否有足够的数字用于运算
+            err = processOperators(numbers, &numTop, operators, &opTop, currentOp, 0);
+            if (err.code != 0) return err;
             
+            // 将当前运算符入栈
             err = checkStackOverflow(opTop + 1, "运算符栈");
             if (err.code != 0) return err;
             operators[++opTop] = currentOp;
-            expr++;
+            
+            current_pos++;
             lastWasNumber = 0;
             continue;
         }
         
         // 无效字符
-        if (*expr != ' ' && *expr != '\n') {
-            return CALC_ERROR("无效的字符");
-        }
-        expr++;
+        return CALC_ERROR_POS("无效的字符", position);
     }
     
     // 处理剩余的运算符
-    err = processOperators(numbers, &numTop, operators, &opTop, '(', 0);
+    err = processOperators(numbers, &numTop, operators, &opTop, '\0', 1);
     if (err.code != 0) return err;
     
-    if (numTop != 0) {
-        return CALC_ERROR("表达式格式错误");
+    // 检查结果
+    if (numTop != 0 || opTop != -1) {
+        return CALC_ERROR_CODE(ERR_SYNTAX, "表达式不完整");
     }
     
     *result = numbers[0];
     return CALC_SUCCESS;
-} 
+}

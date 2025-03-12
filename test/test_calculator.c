@@ -1,94 +1,7 @@
 #include "calculator.h"
+#include "test_framework.h"
 #include <stdio.h>
 #include <string.h>
-
-// 测试结果结构
-typedef struct {
-    const char* name;
-    int passed;
-    const char* message;
-    double actual_result;
-    const char* actual_error_msg;
-} TestResult;
-
-// 测试用例结构
-typedef struct {
-    const char* expression;
-    double expected_result;
-    int expect_error;
-    const char* expected_error_msg;
-} TestCase;
-
-// 用于比较浮点数是否相等
-int isDoubleEqual(double a, double b) {
-    if (isnan(a) && isnan(b)) return 1;
-    if (isinf(a) && isinf(b)) return (a > 0) == (b > 0);
-    
-    // 对于非常小的数，使用绝对误差
-    if (fabs(a) < EPSILON || fabs(b) < EPSILON) {
-        return fabs(a - b) < EPSILON;
-    }
-    
-    // 对于其他数，使用相对误差
-    double relativeError = fabs((a - b) / b);
-    return relativeError < EPSILON;
-}
-
-// 运行单个测试用例
-TestResult runTest(const TestCase* test, AngleMode mode) {
-    TestResult result = {test->expression, 0, NULL, 0, NULL};
-    double actual_result;
-    CalcError err = evaluateExpression(test->expression, mode, &actual_result);
-    
-    if (test->expect_error) {
-        if (err.code != 0) {
-            result.actual_error_msg = err.message;
-            if (test->expected_error_msg != NULL && 
-                strcmp(err.message, test->expected_error_msg) == 0) {
-                result.passed = 1;
-            } else {
-                result.passed = 0;
-                result.message = "错误消息不匹配";
-            }
-        } else {
-            result.passed = 0;
-            result.message = "期望出错但计算成功";
-        }
-    } else {
-        if (err.code == 0) {
-            if (isDoubleEqual(actual_result, test->expected_result)) {
-                result.passed = 1;
-            } else {
-                result.passed = 0;
-                result.message = "结果不匹配";
-            }
-        } else {
-            result.passed = 0;
-            result.message = "计算出错";
-            result.actual_error_msg = err.message;
-        }
-    }
-    result.actual_result = actual_result;
-    return result;
-}
-
-// 打印测试结果
-void printTestResult(const TestResult* result, const TestCase* test, double actual_result) {
-    printf("测试用例: %s\n", result->name);
-    if (result->passed) {
-        printf("✓ 通过\n");
-    } else {
-        printf("✗ 失败: %s\n", result->message);
-        if (test->expect_error) {
-            printf("  期望的错误消息: '%s'\n", test->expected_error_msg ? test->expected_error_msg : "无");
-            printf("  实际的错误消息: '%s'\n", result->actual_error_msg ? result->actual_error_msg : "无");
-        } else {
-            printf("  期望结果: %.*g\n", PRECISION, test->expected_result);
-            printf("  实际结果: %.*g\n", PRECISION, actual_result);
-        }
-    }
-    printf("\n");
-}
 
 int main() {
     SetConsoleOutputCP(65001);  // UTF-8
@@ -156,11 +69,52 @@ int main() {
         {"sin(90)", 1, 0, NULL},
         {"cos(90)", 0, 0, NULL},
         {"tan(90)", 0, 1, "tan函数在该点处无定义"},  // 测试tan在90度的情况
-        // {"sin(pi)", 0, 0, NULL},                    // 测试pi常量
-        // {"cos(pi)", -1, 0, NULL},                   // 测试pi常量
         {"sin(-90)", -1, 0, NULL},                  // 测试负角度
         {"cos(-90)", 0, 0, NULL},                   // 测试负角度
-        // {"sin(pi/2)", 1, 0, NULL},                  // 测试pi的运算
+        
+        // 新增函数测试
+        {"asin(0)", 0, 0, NULL},                    // 测试反正弦函数
+        {"asin(1)", 90, 0, NULL},                   // 测试反正弦函数
+        {"asin(-1)", -90, 0, NULL},                 // 测试反正弦函数
+        {"asin(0.5)", 30, 0, NULL},                 // 测试反正弦函数
+        {"asin(2)", 0, 1, "asin的参数必须在[-1,1]范围内"}, // 测试参数范围
+        
+        {"acos(0)", 90, 0, NULL},                   // 测试反余弦函数
+        {"acos(1)", 0, 0, NULL},                    // 测试反余弦函数
+        {"acos(-1)", 180, 0, NULL},                 // 测试反余弦函数
+        {"acos(0.5)", 60, 0, NULL},                 // 测试反余弦函数
+        {"acos(2)", 0, 1, "acos的参数必须在[-1,1]范围内"}, // 测试参数范围
+        
+        {"atan(0)", 0, 0, NULL},                    // 测试反正切函数
+        {"atan(1)", 45, 0, NULL},                   // 测试反正切函数
+        {"atan(-1)", -45, 0, NULL},                 // 测试反正切函数
+        
+        {"log(1)", 0, 0, NULL},                     // 测试常用对数
+        {"log(10)", 1, 0, NULL},                    // 测试常用对数
+        {"log(100)", 2, 0, NULL},                   // 测试常用对数
+        {"log(0)", 0, 1, "log函数的参数必须大于0"},    // 测试参数范围
+        {"log(-1)", 0, 1, "log函数的参数必须大于0"},   // 测试参数范围
+        
+        {"ln(1)", 0, 0, NULL},                      // 测试自然对数
+        {"ln(e)", 1, 0, NULL},                      // 测试自然对数与e常量
+        {"ln(e^2)", 2, 0, NULL},                    // 测试自然对数与e常量
+        {"ln(0)", 0, 1, "ln函数的参数必须大于0"},      // 测试参数范围
+        {"ln(-1)", 0, 1, "ln函数的参数必须大于0"},     // 测试参数范围
+        
+        {"abs(0)", 0, 0, NULL},                     // 测试绝对值
+        {"abs(1)", 1, 0, NULL},                     // 测试绝对值
+        {"abs(-1)", 1, 0, NULL},                    // 测试绝对值
+        {"abs(-3.14)", 3.14, 0, NULL},              // 测试绝对值
+    };
+
+    // 新常量测试
+    TestCase constantTests[] = {
+        {"e", E, 0, NULL},                          // 测试e常量
+        {"-e", -E, 0, NULL},                        // 测试-e
+        {"2*e", 2*E, 0, NULL},                      // 测试e常量的乘法
+        {"e^2", E*E, 0, NULL},                      // 测试e常量的幂
+        {"ln(e)", 1, 0, NULL},                      // 测试e常量与自然对数
+        {"log(e)", log10(E), 0, NULL},              // 测试e常量与常用对数
     };
 
     // 弧度模式测试用例
@@ -197,7 +151,7 @@ int main() {
     // 边界值测试用例
     TestCase boundaryTests[] = {
         {"0.000000001", 1e-9, 0, NULL},           // 测试小数精度
-        {"9999999999", 1e10, 0, NULL},            // 测试大数
+        {"9999999999", 9999999999.0, 0, NULL},     // 测试大数（改为接受实际结果）
         {"1/1000000000", 1e-9, 0, NULL},          // 测试除法精度
         {"0.1^10", 1e-10, 0, NULL},               // 测试幂运算精度
         {"sin(89.999999)", 1, 0, NULL},           // 测试接近90度
@@ -255,6 +209,13 @@ int main() {
     for (size_t i = 0; i < sizeof(boundaryTests)/sizeof(boundaryTests[0]); i++) {
         TestResult result = runTest(&boundaryTests[i], MODE_DEG);
         printTestResult(&result, &boundaryTests[i], result.actual_result);
+    }
+
+    // 运行新常量测试
+    printf("=== 常量测试 ===\n");
+    for (size_t i = 0; i < sizeof(constantTests)/sizeof(constantTests[0]); i++) {
+        TestResult result = runTest(&constantTests[i], MODE_DEG);
+        printTestResult(&result, &constantTests[i], result.actual_result);
     }
 
     return 0;
