@@ -1,4 +1,5 @@
 #include "calculator.h"
+#include <stdint.h>  // 添加对int64_t的支持
 
 // 执行基本运算
 CalcError performOperation(char op, double a, double b, double* result) {
@@ -24,7 +25,7 @@ CalcError performOperation(char op, double a, double b, double* result) {
                 return CALC_ERROR_CODE(ERR_UNDEFINED, "0的负数次幂未定义");
             }
             // 处理特殊情况：负数的小数次幂
-            if (a < 0 && fabs(b - (long)b) > EPSILON) {
+            if (a < 0 && fabs(b - (int64_t)b) > EPSILON) {
                 return CALC_ERROR_CODE(ERR_UNDEFINED, "负数不能开非整数次方根");
             }
             *result = pow(a, b);
@@ -39,7 +40,7 @@ CalcError performOperation(char op, double a, double b, double* result) {
     }
     
     // 处理接近整数的浮点数
-    long intValue;
+    int64_t intValue;
     if (isCloseToInteger(*result, &intValue)) {
         *result = intValue;
     }
