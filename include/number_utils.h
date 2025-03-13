@@ -2,6 +2,7 @@
 #define NUMBER_UTILS_H
 
 #include <float.h>
+#include <stdint.h>  // 添加对int64_t的支持
 #include "error_handling.h"
 
 // 数值精度控制常量
@@ -13,13 +14,21 @@
 #define INFINITY_THRESHOLD 1e15       // 无穷大阈值
 #define PRECISION 10                  // 小数点后位数
 
+// 三角函数精度控制常量
+#define ANGLE_EPSILON_DEG 0.001      // 角度模式下的精度阈值
+#define ANGLE_EPSILON_RAD 0.0001     // 弧度模式下的精度阈值
+
 // 数值处理函数声明
 CalcError getNumberWithError(const char** expr, double* result);
 double getNumber(const char** expr);
 int isInfinite(double value);
 int isUndefined(double value);
 int isDoubleEqual(double a, double b);
-int isCloseToInteger(double value, long* intValue);
+int isCloseToInteger(double value, int64_t* intValue);  // 将long改为int64_t
 char* formatNumber(double value, char* buffer, size_t bufferSize);
 
-#endif // NUMBER_UTILS_H 
+// 角度处理和三角函数精度相关函数
+int isNearStandardAngle(double angle, double standardAngle, double epsilon, int isDegreesMode);
+double correctTrigValue(double value, int isStandardValue);
+
+#endif // NUMBER_UTILS_H
