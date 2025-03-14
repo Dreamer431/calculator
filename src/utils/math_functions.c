@@ -235,16 +235,4 @@ CalcError calculateFunctionWithError(FuncType func, double value, AngleMode mode
     }
     
     return CALC_SUCCESS;
-}
-
-/**
- * 计算函数值，简化接口版本
- */
-double calculateFunction(FuncType func, double value, AngleMode mode) {
-    double result;
-    CalcError err = calculateFunctionWithError(func, value, mode, &result);
-    if (err.code != 0) {
-        return NAN; // 出错时返回NaN
-    }
-    return result;
 } 

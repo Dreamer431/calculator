@@ -40,7 +40,6 @@ typedef enum {
 // 函数声明
 FuncType getFunction(const char** expr);
 int getPriority(char op);
-double calculateFunction(FuncType func, double value, AngleMode mode);
 CalcError calculateFunctionWithError(FuncType func, double value, AngleMode mode, double* result);
 double degreeToRadian(double degree);
 double radianToDegree(double radian);
