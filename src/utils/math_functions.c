@@ -29,53 +29,49 @@ static int checkTrigSpecialAngle(double angle, AngleMode mode, FuncType funcType
     angle = fmod(angle, fullCircle);
     if (angle < 0) angle += fullCircle;
     
-    // 检查是否接近特殊角
+    // 特殊角度数组: 0°, 90°, 180°, 270°
+    double specialAngles[4] = {0, right_angle, half_circle, right_angle + half_circle};
+    
+    // 找到最接近的特殊角度
+    int closestIndex = -1;
+    double minDiff = epsilon;
+    
+    for (int i = 0; i < 4; i++) {
+        double diff = fabs(angle - specialAngles[i]);
+        if (diff <= minDiff) {
+            minDiff = diff;
+            closestIndex = i;
+        }
+    }
+    
+    // 如果没有找到接近的特殊角度
+    if (closestIndex == -1) {
+        return 0;
+    }
+    
+    // 根据三角函数类型和特殊角度确定返回值
     switch (funcType) {
         case FUNC_SIN:
-            // sin在0°和180°处为0
-            if (isNearStandardAngle(angle, 0, epsilon, mode == MODE_DEG) || 
-                isNearStandardAngle(angle, half_circle, epsilon, mode == MODE_DEG)) {
-                return 1; // 值应为0
-            }
-            // sin在90°处为1，270°处为-1
-            else if (isNearStandardAngle(angle, right_angle, epsilon, mode == MODE_DEG)) {
-                return 2; // 值应为1
-            }
-            else if (isNearStandardAngle(angle, right_angle + half_circle, epsilon, mode == MODE_DEG)) {
-                return 3; // 值应为-1
-            }
+            // sin: 0° = 0, 90° = 1, 180° = 0, 270° = -1
+            if (closestIndex == 0 || closestIndex == 2) return 1; // 值应为0
+            if (closestIndex == 1) return 2; // 值应为1
+            if (closestIndex == 3) return 3; // 值应为-1
             break;
             
         case FUNC_COS:
-            // cos在90°和270°处为0
-            if (isNearStandardAngle(angle, right_angle, epsilon, mode == MODE_DEG) || 
-                isNearStandardAngle(angle, right_angle + half_circle, epsilon, mode == MODE_DEG)) {
-                return 1; // 值应为0
-            }
-            // cos在0°处为1，180°处为-1
-            else if (isNearStandardAngle(angle, 0, epsilon, mode == MODE_DEG)) {
-                return 2; // 值应为1
-            }
-            else if (isNearStandardAngle(angle, half_circle, epsilon, mode == MODE_DEG)) {
-                return 3; // 值应为-1
-            }
+            // cos: 0° = 1, 90° = 0, 180° = -1, 270° = 0
+            if (closestIndex == 1 || closestIndex == 3) return 1; // 值应为0
+            if (closestIndex == 0) return 2; // 值应为1
+            if (closestIndex == 2) return 3; // 值应为-1
             break;
             
         case FUNC_TAN:
-            // tan在0°和180°处为0
-            if (isNearStandardAngle(angle, 0, epsilon, mode == MODE_DEG) || 
-                isNearStandardAngle(angle, half_circle, epsilon, mode == MODE_DEG)) {
-                return 1; // 值应为0
-            }
-            // tan在90°和270°处无定义
-            else if (isNearStandardAngle(angle, right_angle, epsilon, mode == MODE_DEG) || 
-                     isNearStandardAngle(angle, right_angle + half_circle, epsilon, mode == MODE_DEG)) {
-                return 4; // 无定义
-            }
+            // tan: 0° = 0, 90° = 无定义, 180° = 0, 270° = 无定义
+            if (closestIndex == 0 || closestIndex == 2) return 1; // 值应为0
+            if (closestIndex == 1 || closestIndex == 3) return 4; // 无定义
             break;
             
         default:
-            // 其他函数不需要特殊处理
             break;
     }
     
