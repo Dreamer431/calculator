@@ -50,10 +50,37 @@ CalcError performOperation(char op, double a, double b, double* result) {
 
 // 处理运算符栈
 CalcError processOperators(double* numbers, int* numTop, char* operators, int* opTop, char stopAt, int processEqual) {
-    // 处理所有优先级等于或高于当前运算符的操作
-    while (*opTop >= 0 && operators[*opTop] != stopAt && 
-            (processEqual ? getPriority(operators[*opTop]) >= getPriority(stopAt) : 
-                            getPriority(operators[*opTop]) > getPriority(stopAt))) {
+    // 处理运算符栈中的运算符
+    // 注意：幂运算是右结合的，其他运算符是左结合的
+    // stopAt 用于指示遇到什么字符停止（如左括号），或者用于优先级比较
+    
+    while (*opTop >= 0) {
+        char stackOp = operators[*opTop];
+        
+        // 如果栈顶是左括号，停止处理（用于右括号匹配）
+        if (stackOp == '(') {
+            break;
+        }
+        
+        int stackPriority = getPriority(stackOp);
+        int stopPriority = getPriority(stopAt);
+        
+        // 决定是否处理栈顶运算符
+        int shouldProcess;
+        if (stackOp == '^') {
+            // 幂运算是右结合的：只有栈顶优先级严格大于当前运算符时才处理
+            shouldProcess = stackPriority > stopPriority;
+        } else {
+            // 其他运算符是左结合的：栈顶优先级大于等于当前运算符时处理
+            shouldProcess = stackPriority >= stopPriority;
+        }
+        
+        // processEqual 为真时表示处理剩余所有运算符（表达式结尾）
+        if (processEqual && stopPriority < 0) {
+            shouldProcess = 1;
+        }
+        
+        if (!shouldProcess) break;
         
         if (*numTop < 1) {
             return CALC_ERROR_CODE(ERR_SYNTAX, "运算符使用不正确");

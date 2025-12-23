@@ -29,8 +29,8 @@ char* formatNumber(double value, char* buffer, size_t bufferSize) {
     // 检查是否接近整数
     int64_t intValue;
     if (isCloseToInteger(value, &intValue)) {
-        // 处理大整数：超过10^15使用科学计数法
-        if (fabs(value) >= 1e15) {
+        // 处理大整数：超过阈值使用科学计数法
+        if (fabs(value) >= LARGE_INTEGER_THRESHOLD) {
             snprintf(buffer, bufferSize, "%.1e", value);
             return buffer;
         }

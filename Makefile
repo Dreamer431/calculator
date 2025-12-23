@@ -1,4 +1,4 @@
-CC = C:/TDM-GCC-64/bin/gcc.exe
+CC = gcc
 CFLAGS = -Wall -Wextra -O2 -Iinclude -Itest
 TARGET = calculator
 TEST_TARGET = test_runner

@@ -18,6 +18,13 @@
 #define ANGLE_EPSILON_DEG 0.001      // 角度模式下的精度阈值
 #define ANGLE_EPSILON_RAD 0.0001     // 弧度模式下的精度阈值
 
+// 整数处理常量
+#define MAX_INTEGER_DIGITS 15        // 整数部分最大位数（防止溢出）
+#define LARGE_INTEGER_THRESHOLD 1e15 // 大整数显示阈值（超过使用科学计数法）
+
+// 历史记录大小
+#define HISTORY_SIZE 5
+
 // 数值处理函数声明
 CalcError getNumberWithError(const char** expr, double* result);
 double getNumber(const char** expr);

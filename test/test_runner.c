@@ -11,72 +11,58 @@ extern TestCase radianTests[];
 extern TestCase complexTests[];
 extern TestCase boundaryTests[];
 extern TestCase constantTests[];
+extern TestCase implicitMultiplyTests[];
+extern TestCase powerTests[];
+extern TestCase unitConversionTests[];
+extern TestCase whitespaceTests[];
 
-// 获取数组大小的宏
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+// 辅助函数：运行测试数组直到遇到 NULL 终止符
+static int runTestSuite(const char* suiteName, TestCase tests[], AngleMode mode) {
+    int suiteTotal = 0, suitePassed = 0;
+    printf("\n=== %s ===\n", suiteName);
+    
+    for (size_t i = 0; tests[i].expr != NULL; i++) {
+        TestResult result = runTest(&tests[i], mode);
+        printTestResult(&result, &tests[i], result.actual_result);
+        suiteTotal++;
+        if (result.success) suitePassed++;
+    }
+    
+    printf("  --- 小计: %d/%d 通过 ---\n", suitePassed, suiteTotal);
+    return suiteTotal - suitePassed;  // 返回失败数
+}
 
 int main() {
-    // 设置控制台代码页
+    // 设置控制台代码页（仅Windows）
+#ifdef _WIN32
     SetConsoleOutputCP(65001);  // UTF-8
     SetConsoleCP(65001);       // UTF-8
+#endif
     
-    printf("开始运行测试...\n\n");
-
-    // 运行基本运算测试
-    printf("=== 基本运算测试 ===\n");
-    for (size_t i = 0; i < 15; i++) {
-        TestResult result = runTest(&basicTests[i], MODE_DEG);
-        printTestResult(&result, &basicTests[i], result.actual_result);
-    }
-
-    // 运行科学计数法测试
-    printf("\n=== 科学计数法测试 ===\n");
-    for (size_t i = 0; i < 10; i++) {
-        TestResult result = runTest(&scientificTests[i], MODE_DEG);
-        printTestResult(&result, &scientificTests[i], result.actual_result);
-    }
-
-    // 运行错误处理测试
-    printf("\n=== 错误处理测试 ===\n");
-    for (size_t i = 0; i < 16; i++) {
-        TestResult result = runTest(&errorTests[i], MODE_DEG);
-        printTestResult(&result, &errorTests[i], result.actual_result);
-    }
-
-    // 运行函数测试（角度模式）
-    printf("\n=== 函数测试（角度模式）===\n");
-    for (size_t i = 0; i < 38; i++) {
-        TestResult result = runTest(&functionTests[i], MODE_DEG);
-        printTestResult(&result, &functionTests[i], result.actual_result);
-    }
-
-    // 运行弧度模式测试
-    printf("\n=== 函数测试（弧度模式）===\n");
-    for (size_t i = 0; i < 10; i++) {
-        TestResult result = runTest(&radianTests[i], MODE_RAD);
-        printTestResult(&result, &radianTests[i], result.actual_result);
-    }
-
-    // 运行复杂表达式测试
-    printf("\n=== 复杂表达式测试 ===\n");
-    for (size_t i = 0; i < 13; i++) {
-        TestResult result = runTest(&complexTests[i], MODE_DEG);
-        printTestResult(&result, &complexTests[i], result.actual_result);
-    }
-
-    // 运行边界值测试
-    printf("\n=== 边界值测试 ===\n");
-    for (size_t i = 0; i < 8; i++) {
-        TestResult result = runTest(&boundaryTests[i], MODE_DEG);
-        printTestResult(&result, &boundaryTests[i], result.actual_result);
-    }
-
-    // 运行新常量测试
-    printf("\n=== 常量测试 ===\n");
-    for (size_t i = 0; i < 6; i++) {
-        TestResult result = runTest(&constantTests[i], MODE_DEG);
-        printTestResult(&result, &constantTests[i], result.actual_result);
-    }
-
-    return 0;
+    printf("========================================\n");
+    printf("       Calculator 单元测试\n");
+    printf("========================================\n");
+    
+    // 重置统计
+    resetTestStats();
+    
+    // 运行所有测试套件
+    runTestSuite("基本运算测试", basicTests, MODE_DEG);
+    runTestSuite("幂运算与结合性测试", powerTests, MODE_DEG);
+    runTestSuite("隐式乘法测试", implicitMultiplyTests, MODE_DEG);
+    runTestSuite("科学计数法测试", scientificTests, MODE_DEG);
+    runTestSuite("错误处理测试", errorTests, MODE_DEG);
+    runTestSuite("函数测试（角度模式）", functionTests, MODE_DEG);
+    runTestSuite("函数测试（弧度模式）", radianTests, MODE_RAD);
+    runTestSuite("单位转换函数测试", unitConversionTests, MODE_DEG);
+    runTestSuite("复杂表达式测试", complexTests, MODE_DEG);
+    runTestSuite("边界值测试", boundaryTests, MODE_DEG);
+    runTestSuite("常量测试", constantTests, MODE_DEG);
+    runTestSuite("空格处理测试", whitespaceTests, MODE_DEG);
+    
+    // 打印测试摘要
+    printTestSummary();
+    
+    // 返回失败数作为退出码
+    return globalStats.failed;
 }

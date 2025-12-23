@@ -19,10 +19,26 @@ typedef struct {
     const char* error_msg;  // 错误消息
 } TestResult;
 
+// 测试统计结构
+typedef struct {
+    int total;              // 总测试数
+    int passed;             // 通过数
+    int failed;             // 失败数
+} TestStats;
+
+// 全局测试统计
+extern TestStats globalStats;
+
 // 运行单个测试用例
 TestResult runTest(TestCase* testCase, AngleMode mode);
 
-// 打印测试结果
+// 打印测试结果并更新统计
 void printTestResult(TestResult* result, TestCase* testCase, double actual);
 
-#endif // TEST_FRAMEWORK_H 
+// 重置测试统计
+void resetTestStats(void);
+
+// 打印测试摘要
+void printTestSummary(void);
+
+#endif // TEST_FRAMEWORK_H

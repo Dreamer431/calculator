@@ -33,7 +33,8 @@ const char* getErrorDescription(int errorCode) {
 // 检查栈溢出
 CalcError checkStackOverflow(int stackSize, const char* stackName) {
     if (stackSize >= MAX_EXPR) {
-        char errorMsg[100];
+        // 使用静态缓冲区避免悬垂指针（局部变量在函数返回后失效）
+        static char errorMsg[100];
         snprintf(errorMsg, sizeof(errorMsg), "%s溢出，表达式过于复杂", stackName);
         return CALC_ERROR_CODE(ERR_STACK_OVERFLOW, errorMsg);
     }

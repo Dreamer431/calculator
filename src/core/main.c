@@ -2,27 +2,33 @@
 
 // 添加历史记录管理函数
 void addToHistory(char history[][MAX_EXPR], int* historyCount, const char* entry) {
-    if (*historyCount < 5) {
+    if (*historyCount < HISTORY_SIZE) {
         // 还有空间，直接添加
         strcpy(history[*historyCount], entry);
         (*historyCount)++;
     } else {
         // 移动历史记录，删除最旧的
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < HISTORY_SIZE - 1; i++) {
             strcpy(history[i], history[i + 1]);
         }
         // 添加新记录
-        strcpy(history[4], entry);
+        strcpy(history[HISTORY_SIZE - 1], entry);
     }
 }
 
 int main() {
-    // 设置控制台代码页
+    // 设置控制台代码页（仅Windows）
+#ifdef _WIN32
     SetConsoleOutputCP(65001);  // UTF-8
     SetConsoleCP(65001);       // UTF-8
+#endif
     
     char expression[MAX_EXPR];
-    char history[5][MAX_EXPR] = {"", "", "", "", ""};  // 保存最近5条历史记录
+    char history[HISTORY_SIZE][MAX_EXPR];  // 保存最近HISTORY_SIZE条历史记录
+    // 初始化历史记录数组
+    for (int i = 0; i < HISTORY_SIZE; i++) {
+        history[i][0] = '\0';
+    }
     int historyCount = 0;
     AngleMode mode = MODE_DEG;  // 默认使用角度模式
     

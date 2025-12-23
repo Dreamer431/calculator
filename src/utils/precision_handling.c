@@ -7,7 +7,8 @@
  */
 int isDoubleEqual(double a, double b) {
     // 处理特殊情况
-    if (isnan(a) && isnan(b)) return 1;
+    // NaN 与任何值都不相等，包括自己（IEEE 754标准）
+    if (isnan(a) || isnan(b)) return 0;
     if (isinf(a) && isinf(b)) return (a > 0) == (b > 0);
     
     // 检查绝对零
@@ -31,6 +32,12 @@ int isDoubleEqual(double a, double b) {
 int isCloseToInteger(double value, int64_t* intValue) {
     // 四舍五入到最接近的整数
     double rounded = round(value);
+    
+    // 检查是否在 int64_t 范围内，防止转换溢出
+    if (rounded > (double)INT64_MAX || rounded < (double)INT64_MIN) {
+        return 0;
+    }
+    
     if (isDoubleEqual(value, rounded)) {
         *intValue = (int64_t)rounded;
         return 1;

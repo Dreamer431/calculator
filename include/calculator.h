@@ -6,7 +6,9 @@
 #include <string.h>
 #include <ctype.h>
 #include <math.h>
-#include <windows.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 #include <float.h>
 
 // 包含分解的头文件

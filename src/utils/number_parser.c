@@ -50,9 +50,11 @@ CalcError getNumberWithError(const char** expr, double* result) {
             }
             while (isdigit(**expr)) {
                 exponent = exponent * 10 + (**expr - '0');
-                if (exponent > 308) { // 防止指数过大
+                // 根据指数符号分别检查上溢和下溢
+                if (exponentSign > 0 && exponent > 308) { // 正指数过大，会溢出
                     return CALC_ERROR_POS("数字太大！", *expr - start);
                 }
+                // 负指数超过324会下溢到0，但这是可接受的，不需要报错
                 (*expr)++;
             }
             
@@ -75,7 +77,7 @@ CalcError getNumberWithError(const char** expr, double* result) {
                 }
             } else {
                 digitCount++;
-                if (digitCount > 15) {  // 防止整数部分过长
+                if (digitCount > MAX_INTEGER_DIGITS) {  // 防止整数部分过长
                     return CALC_ERROR_POS("数字太大！", *expr - start);
                 }
                 // 检查整数部分溢出
@@ -113,6 +115,7 @@ double getNumber(const char** expr) {
 
 // 获取函数类型
 FuncType getFunction(const char** expr) {
+    const char* start = *expr;  // 保存起始位置，失败时恢复
     char func[10] = {0};
     int i = 0;
     
@@ -135,6 +138,8 @@ FuncType getFunction(const char** expr) {
     if (strcmp(func, "rad") == 0) return FUNC_RAD;
     if (strcmp(func, "deg") == 0) return FUNC_DEG;
     
+    // 未匹配到任何函数，恢复指针位置
+    *expr = start;
     return FUNC_NONE;
 }
 
