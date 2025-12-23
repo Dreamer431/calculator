@@ -1,6 +1,86 @@
 #include "calculator.h"
 
 /**
+ * 查找匹配的右括号
+ * 
+ * @param start 左括号之后的位置
+ * @return 匹配的右括号之后的位置，如果未找到返回 NULL
+ */
+static const char* findMatchingBracket(const char* start) {
+    int bracketCount = 1;
+    const char* pos = start;
+    
+    while (bracketCount > 0 && *pos) {
+        if (*pos == '(') bracketCount++;
+        if (*pos == ')') bracketCount--;
+        pos++;
+    }
+    
+    return (bracketCount == 0) ? pos : NULL;
+}
+
+/**
+ * 计算函数调用的值
+ * 处理函数名后面括号内的表达式，并应用函数
+ * 
+ * @param func       函数类型
+ * @param current_pos 当前解析位置指针（指向左括号）
+ * @param mode       角度模式
+ * @param funcResult 输出的函数计算结果
+ * @param expr       原始表达式（用于计算错误位置）
+ * @return 成功返回 CALC_SUCCESS，否则返回错误
+ */
+static CalcError evaluateFunctionCall(FuncType func, const char** current_pos, 
+                                       AngleMode mode, double* funcResult,
+                                       const char* expr) {
+    // 跳过空格
+    while (**current_pos == ' ') (*current_pos)++;
+    
+    // 必须跟着左括号
+    if (**current_pos != '(') {
+        return CALC_ERROR_POS("函数后必须跟着括号", (int)(*current_pos - expr));
+    }
+    
+    // 跳过左括号
+    (*current_pos)++;
+    
+    // 找到匹配的右括号
+    const char* endExpr = findMatchingBracket(*current_pos);
+    if (endExpr == NULL) {
+        return CALC_ERROR_POS("括号不匹配", (int)(*current_pos - expr));
+    }
+    
+    // 提取并计算括号内的表达式
+    size_t len = endExpr - *current_pos - 1;  // 减1是为了不包含右括号
+    char* subExpr = (char*)malloc(len + 1);
+    if (subExpr == NULL) {
+        return CALC_ERROR_POS("内存分配失败", (int)(*current_pos - expr));
+    }
+    strncpy(subExpr, *current_pos, len);
+    subExpr[len] = '\0';
+    
+    double value;
+    CalcError subExprErr = evaluateExpression(subExpr, mode, &value);
+    free(subExpr);
+    
+    if (subExprErr.code != 0) {
+        return subExprErr;
+    }
+    
+    // 计算函数值
+    CalcError funcErr = calculateFunctionWithError(func, value, mode, funcResult);
+    if (funcErr.code != 0) {
+        funcErr.position = (int)(*current_pos - expr);
+        return funcErr;
+    }
+    
+    // 更新位置到右括号之后
+    *current_pos = endExpr;
+    
+    return CALC_SUCCESS;
+}
+
+/**
  * 处理隐式乘法（如 2pi, 2(3+4), (2)(3) 等情况）
  * 当上一个 token 是数字或右括号，下一个是数字、常量或左括号时插入乘号
  * 
@@ -116,61 +196,18 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
             // 检查是否是函数
             FuncType func = getFunction(&current_pos);
             if (func != FUNC_NONE) {
-                // 跳过空格
-                while (*current_pos == ' ') current_pos++;
-                
-                // 必须跟着左括号
-                if (*current_pos != '(') {
-                    return CALC_ERROR_POS("函数后必须跟着括号！", CURRENT_POS);
-                }
-                
-                // 处理括号内的表达式
-                current_pos++; // 跳过左括号
-                const char* endExpr = current_pos;
-                int bracketCount = 1;
-                
-                // 找到对应的右括号
-                while (bracketCount > 0 && *endExpr) {
-                    if (*endExpr == '(') bracketCount++;
-                    if (*endExpr == ')') bracketCount--;
-                    endExpr++;
-                }
-                
-                if (bracketCount > 0) {
-                    return CALC_ERROR_POS("括号不匹配！", CURRENT_POS);
-                }
-                
-                // 计算括号内的表达式
-                size_t len = endExpr - current_pos - 1;  // 减1是为了不包含右括号
-                char* subExpr = (char*)malloc(len + 1);  // +1 用于存储 \0
-                if (subExpr == NULL) {
-                    return CALC_ERROR_POS("内存分配失败", CURRENT_POS);
-                }
-                strncpy(subExpr, current_pos, len);
-                subExpr[len] = '\0';
-                
-                double value;
-                CalcError subExprErr = evaluateExpression(subExpr, mode, &value);
-                free(subExpr);
-                
-                if (subExprErr.code != 0) {
-                    return subExprErr;
-                }
-                
                 // 计算函数值
                 double funcResult;
-                CalcError funcErr = calculateFunctionWithError(func, value, mode, &funcResult);
+                // 计算位置时传入原始表达式 expr
+                CalcError funcErr = evaluateFunctionCall(func, &current_pos, mode, &funcResult, expr);
                 if (funcErr.code != 0) {
-                    funcErr.position = CURRENT_POS; // 更新错误位置
                     return funcErr;
                 }
                 
                 err = checkStackOverflow(numTop + 1, "数字栈");
                 if (err.code != 0) return err;
                 numbers[++numTop] = funcResult;
-                
-                current_pos = endExpr;
-                lastWasNumber = 1;  // 函数计算结果视为一个数字
+                lastWasNumber = 1;
                 continue;
             } else {
                 return CALC_ERROR_POS("无效的字符", CURRENT_POS);
@@ -233,7 +270,7 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
             if (opTop >= 0 && operators[opTop] == '(') {
                 opTop--;  // 移除左括号
             } else {
-                return CALC_ERROR_POS("括号不匹配！", CURRENT_POS);
+                return CALC_ERROR_POS("括号不匹配", CURRENT_POS);
             }
             current_pos++;
             lastWasNumber = 1;  // 括号计算完的结果视为一个数字
@@ -272,56 +309,16 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                     else if (isalpha(current_pos[0])) {
                         FuncType func = getFunction(&current_pos);
                         if (func != FUNC_NONE) {
-                            // 跳过空格
-                            while (*current_pos == ' ') current_pos++;
-                            
-                            if (*current_pos != '(') {
-                                return CALC_ERROR_POS("函数后必须跟着括号！", CURRENT_POS);
-                            }
-                            
-                            // 处理括号内的表达式
-                            current_pos++; // 跳过左括号
-                            const char* endExpr = current_pos;
-                            int bracketCount = 1;
-                            
-                            while (bracketCount > 0 && *endExpr) {
-                                if (*endExpr == '(') bracketCount++;
-                                if (*endExpr == ')') bracketCount--;
-                                endExpr++;
-                            }
-                            
-                            if (bracketCount > 0) {
-                                return CALC_ERROR_POS("括号不匹配！", CURRENT_POS);
-                            }
-                            
-                            size_t len = endExpr - current_pos - 1;
-                            char* subExpr = (char*)malloc(len + 1);
-                            if (subExpr == NULL) {
-                                return CALC_ERROR_POS("内存分配失败", CURRENT_POS);
-                            }
-                            strncpy(subExpr, current_pos, len);
-                            subExpr[len] = '\0';
-                            
-                            double value;
-                            CalcError subExprErr = evaluateExpression(subExpr, mode, &value);
-                            free(subExpr);
-                            
-                            if (subExprErr.code != 0) {
-                                return subExprErr;
-                            }
-                            
+                            // 计算函数值
                             double funcResult;
-                            CalcError funcErr = calculateFunctionWithError(func, value, mode, &funcResult);
+                            CalcError funcErr = evaluateFunctionCall(func, &current_pos, mode, &funcResult, expr);
                             if (funcErr.code != 0) {
-                                funcErr.position = CURRENT_POS;
                                 return funcErr;
                             }
                             
                             err = checkStackOverflow(numTop + 1, "数字栈");
                             if (err.code != 0) return err;
                             numbers[++numTop] = -funcResult;  // 取负值
-                            
-                            current_pos = endExpr;
                             lastWasNumber = 1;
                         } else {
                             return CALC_ERROR_POS("无效的字符", CURRENT_POS);
@@ -377,5 +374,7 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
     }
     
     *result = numbers[0];
+    
+    #undef CURRENT_POS
     return CALC_SUCCESS;
 }

@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <stdint.h>  // 添加对int64_t的支持
+#include <inttypes.h>
 
 /**
  * 统一格式化数值
@@ -36,7 +36,7 @@ char* formatNumber(double value, char* buffer, size_t bufferSize) {
         }
         
         // 普通整数：直接显示
-        snprintf(buffer, bufferSize, "%lld", (long long)intValue);
+        snprintf(buffer, bufferSize, "%" PRId64, intValue);
         return buffer;
     }
     

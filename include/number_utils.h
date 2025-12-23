@@ -27,15 +27,10 @@
 
 // 数值处理函数声明
 CalcError getNumberWithError(const char** expr, double* result);
-double getNumber(const char** expr);
 int isInfinite(double value);
 int isUndefined(double value);
 int isDoubleEqual(double a, double b);
 int isCloseToInteger(double value, int64_t* intValue);  // 将long改为int64_t
 char* formatNumber(double value, char* buffer, size_t bufferSize);
-
-// 角度处理和三角函数精度相关函数
-int isNearStandardAngle(double angle, double standardAngle, double epsilon, int isDegreesMode);
-double correctTrigValue(double value, int isStandardValue);
 
 #endif // NUMBER_UTILS_H

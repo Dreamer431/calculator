@@ -24,13 +24,13 @@ CalcError getNumberWithError(const char** expr, double* result) {
     while (isdigit(**expr) || **expr == '.' || tolower(**expr) == 'e') {
         if (**expr == '.') {
             if (hasDecimal || hasExponent) {
-                return CALC_ERROR_POS("数字格式不正确，多个小数点！", *expr - start);
+                return CALC_ERROR_POS("数字格式不正确，多个小数点", *expr - start);
             }
             hasDecimal = 1;
             (*expr)++;
         } else if (tolower(**expr) == 'e') {
             if (hasExponent) {
-                return CALC_ERROR_POS("数字格式不正确，多个指数符号！", *expr - start);
+                return CALC_ERROR_POS("数字格式不正确，多个指数符号", *expr - start);
             }
             hasExponent = 1;
             (*expr)++;
@@ -44,15 +44,15 @@ CalcError getNumberWithError(const char** expr, double* result) {
             // 读取指数值
             if (!isdigit(**expr)) {
                 if (tolower(**expr) == 'e') {
-                    return CALC_ERROR_POS("数字格式不正确，多个指数符号！", *expr - start);
+                    return CALC_ERROR_POS("数字格式不正确，多个指数符号", *expr - start);
                 }
-                return CALC_ERROR_POS("指数部分必须是整数！", *expr - start);
+                return CALC_ERROR_POS("指数部分必须是整数", *expr - start);
             }
             while (isdigit(**expr)) {
                 exponent = exponent * 10 + (**expr - '0');
                 // 根据指数符号分别检查上溢和下溢
                 if (exponentSign > 0 && exponent > 308) { // 正指数过大，会溢出
-                    return CALC_ERROR_POS("数字太大！", *expr - start);
+                    return CALC_ERROR_POS("数字太大", *expr - start);
                 }
                 // 负指数超过324会下溢到0，但这是可接受的，不需要报错
                 (*expr)++;
@@ -60,12 +60,12 @@ CalcError getNumberWithError(const char** expr, double* result) {
             
             // 检查是否还有指数符号
             if (tolower(**expr) == 'e') {
-                return CALC_ERROR_POS("数字格式不正确，多个指数符号！", *expr - start);
+                return CALC_ERROR_POS("数字格式不正确，多个指数符号", *expr - start);
             }
             
             // 检查指数后是否有小数点
             if (**expr == '.') {
-                return CALC_ERROR_POS("指数部分必须是整数！", *expr - start);
+                return CALC_ERROR_POS("指数部分必须是整数", *expr - start);
             }
             break;  // 指数部分结束后退出循环
         } else {
@@ -78,11 +78,11 @@ CalcError getNumberWithError(const char** expr, double* result) {
             } else {
                 digitCount++;
                 if (digitCount > MAX_INTEGER_DIGITS) {  // 防止整数部分过长
-                    return CALC_ERROR_POS("数字太大！", *expr - start);
+                    return CALC_ERROR_POS("数字太大", *expr - start);
                 }
                 // 检查整数部分溢出
                 if (number > DBL_MAX / 10) {
-                    return CALC_ERROR_POS("数字太大！", *expr - start);
+                    return CALC_ERROR_POS("数字太大", *expr - start);
                 }
                 number = number * 10 + (**expr - '0');
             }
@@ -94,23 +94,13 @@ CalcError getNumberWithError(const char** expr, double* result) {
     if (hasExponent) {
         double scale = pow(10.0, exponentSign * exponent);
         if (isinf(scale) || isinf(number * scale)) {
-            return CALC_ERROR_POS("数字太大！", *expr - start);
+            return CALC_ERROR_POS("数字太大", *expr - start);
         }
         number *= scale;
     }
     
     *result = number;
     return CALC_SUCCESS;
-}
-
-// 为了保持兼容性，保留原有的getNumber函数
-double getNumber(const char** expr) {
-    double result;
-    CalcError err = getNumberWithError(expr, &result);
-    if (err.code != 0) {
-        return NAN;
-    }
-    return result;
 }
 
 // 获取函数类型

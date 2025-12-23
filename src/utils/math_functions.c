@@ -1,6 +1,5 @@
 #include "calculator.h"
 #include <math.h>
-#include <stdint.h>  // 添加对int64_t的支持
 
 // 角度转弧度
 double degreeToRadian(double degree) {
@@ -187,7 +186,7 @@ CalcError calculateFunctionWithError(FuncType func, double value, AngleMode mode
         case FUNC_SQRT:
             // 检查参数范围
             if (value < 0) {
-                return CALC_ERROR_CODE(ERR_INVALID_ARGUMENT, "负数不能开平方根！");
+                return CALC_ERROR_CODE(ERR_INVALID_ARGUMENT, "负数不能开平方根");
             }
             *result = sqrt(value);
             break;

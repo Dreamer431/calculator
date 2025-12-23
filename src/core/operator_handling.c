@@ -1,5 +1,4 @@
 #include "calculator.h"
-#include <stdint.h>  // 添加对int64_t的支持
 
 // 执行基本运算
 CalcError performOperation(char op, double a, double b, double* result) {
@@ -36,7 +35,7 @@ CalcError performOperation(char op, double a, double b, double* result) {
     
     // 处理溢出和无穷大
     if (isInfinite(*result)) {
-        return CALC_ERROR_CODE(ERR_OVERFLOW, "计算结果太大！");
+        return CALC_ERROR_CODE(ERR_OVERFLOW, "计算结果太大");
     }
     
     // 处理接近整数的浮点数
