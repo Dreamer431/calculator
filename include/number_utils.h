@@ -11,7 +11,7 @@
 #define DISPLAY_FORMAT_THRESHOLD 1e7  // 超过此值使用科学计数法
 #define DISPLAY_FORMAT_MIN 1e-4       // 小于此值使用科学计数法
 #define EPSILON 1e-10                 // 一般精度阈值
-#define INFINITY_THRESHOLD 1e15       // 无穷大阈值
+#define INFINITY_THRESHOLD DBL_MAX    // 无穷大阈值（与DBL_MAX对齐）
 #define PRECISION 10                  // 小数点后位数
 
 // 三角函数精度控制常量

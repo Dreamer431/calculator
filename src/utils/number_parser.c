@@ -7,17 +7,18 @@ CalcError getNumberWithError(const char** expr, double* result) {
     int hasDecimal = 0;
     int decimalCount = 0;
     int digitCount = 0;
+    int hasDigit = 0;
     int hasExponent = 0;
     int exponent = 0;
     int exponentSign = 1;
-    const char* start = *expr; // 记录起始位置用于计算错误位置
     
     // 跳过空格
     while (**expr == ' ') (*expr)++;
+    const char* start = *expr; // 记录起始位置用于计算错误位置
     
     // 确保至少有一个数字
     if (!isdigit(**expr) && **expr != '.') {
-        return CALC_ERROR_POS("无效的数字格式", *expr - start);
+        return CALC_ERROR_POS("无效的数字格式", 0);
     }
     
     // 处理整数和小数部分
@@ -31,6 +32,9 @@ CalcError getNumberWithError(const char** expr, double* result) {
         } else if (tolower(**expr) == 'e') {
             if (hasExponent) {
                 return CALC_ERROR_POS("数字格式不正确，多个指数符号", *expr - start);
+            }
+            if (!hasDigit) {
+                return CALC_ERROR_POS("无效的数字格式", *expr - start);
             }
             hasExponent = 1;
             (*expr)++;
@@ -69,6 +73,7 @@ CalcError getNumberWithError(const char** expr, double* result) {
             }
             break;  // 指数部分结束后退出循环
         } else {
+            hasDigit = 1;
             if (hasDecimal) {
                 if (decimalCount < PRECISION) {
                     number = number + (**expr - '0') * decimal;
@@ -88,6 +93,10 @@ CalcError getNumberWithError(const char** expr, double* result) {
             }
             (*expr)++;
         }
+    }
+    
+    if (!hasDigit) {
+        return CALC_ERROR_POS("无效的数字格式", 0);
     }
     
     // 应用指数

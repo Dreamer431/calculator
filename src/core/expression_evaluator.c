@@ -20,6 +20,48 @@ static const char* findMatchingBracket(const char* start) {
 }
 
 /**
+ * 解析括号内的子表达式（current_pos 指向括号内第一个字符）
+ * 
+ * @param current_pos 当前解析位置指针（指向括号内第一个字符）
+ * @param mode        角度模式
+ * @param value       输出计算结果
+ * @param expr        原始表达式（用于计算错误位置）
+ * @return 成功返回 CALC_SUCCESS，否则返回错误
+ */
+static CalcError evaluateSubExpression(const char** current_pos, AngleMode mode,
+                                       double* value, const char* expr) {
+    // 找到匹配的右括号
+    const char* endExpr = findMatchingBracket(*current_pos);
+    if (endExpr == NULL) {
+        return CALC_ERROR_POS("括号不匹配", (int)(*current_pos - expr));
+    }
+    
+    // 提取并计算括号内的表达式
+    size_t len = endExpr - *current_pos - 1;  // 减1是为了不包含右括号
+    char* subExpr = (char*)malloc(len + 1);
+    if (subExpr == NULL) {
+        return CALC_ERROR_POS("内存分配失败", (int)(*current_pos - expr));
+    }
+    strncpy(subExpr, *current_pos, len);
+    subExpr[len] = '\0';
+    
+    CalcError subExprErr = evaluateExpression(subExpr, mode, value);
+    free(subExpr);
+    
+    if (subExprErr.code != 0) {
+        if (subExprErr.position >= 0) {
+            subExprErr.position += (int)(*current_pos - expr);
+        }
+        return subExprErr;
+    }
+    
+    // 更新位置到右括号之后
+    *current_pos = endExpr;
+    
+    return CALC_SUCCESS;
+}
+
+/**
  * 计算函数调用的值
  * 处理函数名后面括号内的表达式，并应用函数
  * 
@@ -43,26 +85,10 @@ static CalcError evaluateFunctionCall(FuncType func, const char** current_pos,
     
     // 跳过左括号
     (*current_pos)++;
-    
-    // 找到匹配的右括号
-    const char* endExpr = findMatchingBracket(*current_pos);
-    if (endExpr == NULL) {
-        return CALC_ERROR_POS("括号不匹配", (int)(*current_pos - expr));
-    }
-    
-    // 提取并计算括号内的表达式
-    size_t len = endExpr - *current_pos - 1;  // 减1是为了不包含右括号
-    char* subExpr = (char*)malloc(len + 1);
-    if (subExpr == NULL) {
-        return CALC_ERROR_POS("内存分配失败", (int)(*current_pos - expr));
-    }
-    strncpy(subExpr, *current_pos, len);
-    subExpr[len] = '\0';
+    int argStartPos = (int)(*current_pos - expr);
     
     double value;
-    CalcError subExprErr = evaluateExpression(subExpr, mode, &value);
-    free(subExpr);
-    
+    CalcError subExprErr = evaluateSubExpression(current_pos, mode, &value, expr);
     if (subExprErr.code != 0) {
         return subExprErr;
     }
@@ -70,12 +96,9 @@ static CalcError evaluateFunctionCall(FuncType func, const char** current_pos,
     // 计算函数值
     CalcError funcErr = calculateFunctionWithError(func, value, mode, funcResult);
     if (funcErr.code != 0) {
-        funcErr.position = (int)(*current_pos - expr);
+        funcErr.position = argStartPos;
         return funcErr;
     }
-    
-    // 更新位置到右括号之后
-    *current_pos = endExpr;
     
     return CALC_SUCCESS;
 }
@@ -136,7 +159,7 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
         lastChar--;
         lastCharPos--;
     }
-    if (*lastChar == '+' || *lastChar == '-' || *lastChar == '*' || *lastChar == '/') {
+    if (*lastChar == '+' || *lastChar == '-' || *lastChar == '*' || *lastChar == '/' || *lastChar == '^') {
         return CALC_ERROR_POS("表达式不能以运算符结尾", lastCharPos);
     }
 
@@ -224,9 +247,12 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
             
             // 获取数字
             double num;
+            const char* numberStart = current_pos;
             CalcError numErr = getNumberWithError(&current_pos, &num);
             if (numErr.code != 0) {
-                numErr.position += CURRENT_POS;  // 更新错误位置
+                if (numErr.position >= 0) {
+                    numErr.position += (int)(numberStart - expr);
+                }
                 return numErr;
             }
             
@@ -282,11 +308,13 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
             // 检查连续运算符，但允许负号出现在表达式开头或左括号后
             // 支持: -3, -.5, -pi, -PI, -e, -E, -sin(30), -cos(60) 等
             if (!lastWasNumber && *current_pos == '-') {
-                char nextChar = current_pos[1];
+                const char* lookahead = current_pos + 1;
+                while (*lookahead == ' ') lookahead++;
+                char nextChar = *lookahead;
                 // 检查下一个字符是否可以跟在负号后面
-                if (isdigit(nextChar) || nextChar == '.' || isalpha(nextChar)) {
+                if (isdigit(nextChar) || nextChar == '.' || isalpha(nextChar) || nextChar == '(') {
                     // 处理负数或负值表达式
-                    current_pos++;  // 跳过负号
+                    current_pos = lookahead;  // 跳过负号和空格
                     
                     // 检查是否是常量 pi（大小写不敏感）
                     if ((tolower(current_pos[0]) == 'p' && tolower(current_pos[1]) == 'i') &&
@@ -303,6 +331,20 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                         if (err.code != 0) return err;
                         numbers[++numTop] = -E;
                         current_pos++;
+                        lastWasNumber = 1;
+                    }
+                    // 处理括号表达式（如 -(3+4)）
+                    else if (current_pos[0] == '(') {
+                        current_pos++;  // 跳过左括号，指向括号内第一个字符
+                        double subValue;
+                        CalcError subErr = evaluateSubExpression(&current_pos, mode, &subValue, expr);
+                        if (subErr.code != 0) {
+                            return subErr;
+                        }
+                        
+                        err = checkStackOverflow(numTop + 1, "数字栈");
+                        if (err.code != 0) return err;
+                        numbers[++numTop] = -subValue;
                         lastWasNumber = 1;
                     }
                     // 检查是否是函数（如 -sin(30)）
@@ -327,8 +369,12 @@ CalcError evaluateExpression(const char* expr, AngleMode mode, double* result) {
                     // 处理普通负数
                     else {
                         double num;
+                        const char* numberStart = current_pos;
                         CalcError numErr = getNumberWithError(&current_pos, &num);
                         if (numErr.code != 0) {
+                            if (numErr.position >= 0) {
+                                numErr.position += (int)(numberStart - expr);
+                            }
                             return numErr;
                         }
                         err = checkStackOverflow(numTop + 1, "数字栈");

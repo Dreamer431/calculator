@@ -4,15 +4,15 @@
 void addToHistory(char history[][MAX_EXPR], int* historyCount, const char* entry) {
     if (*historyCount < HISTORY_SIZE) {
         // 还有空间，直接添加
-        strcpy(history[*historyCount], entry);
+        snprintf(history[*historyCount], MAX_EXPR, "%s", entry);
         (*historyCount)++;
     } else {
         // 移动历史记录，删除最旧的
         for (int i = 0; i < HISTORY_SIZE - 1; i++) {
-            strcpy(history[i], history[i + 1]);
+            snprintf(history[i], MAX_EXPR, "%s", history[i + 1]);
         }
         // 添加新记录
-        strcpy(history[HISTORY_SIZE - 1], entry);
+        snprintf(history[HISTORY_SIZE - 1], MAX_EXPR, "%s", entry);
     }
 }
 
@@ -151,14 +151,14 @@ int main() {
             
             // 添加到历史记录
             char historyEntry[MAX_EXPR];
-            sprintf(historyEntry, "%s = 未定义", expression);
+            snprintf(historyEntry, sizeof(historyEntry), "%s = 未定义", expression);
             addToHistory(history, &historyCount, historyEntry);
         } else if (isInfinite(result)) {
             printf("%s = %s无穷大\n", expression, result > 0 ? "" : "-");
             
             // 添加到历史记录
             char historyEntry[MAX_EXPR];
-            sprintf(historyEntry, "%s = %s无穷大", expression, result > 0 ? "" : "-");
+            snprintf(historyEntry, sizeof(historyEntry), "%s = %s无穷大", expression, result > 0 ? "" : "-");
             addToHistory(history, &historyCount, historyEntry);
         } else {
             // 使用新的格式化函数
@@ -168,7 +168,7 @@ int main() {
             
             // 添加到历史记录
             char historyEntry[MAX_EXPR];
-            sprintf(historyEntry, "%s = %s", expression, resultStr);
+            snprintf(historyEntry, sizeof(historyEntry), "%s = %s", expression, resultStr);
             addToHistory(history, &historyCount, historyEntry);
         }
     }
