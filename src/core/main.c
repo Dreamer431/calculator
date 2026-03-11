@@ -64,6 +64,14 @@ int main() {
             break;
         }
         
+        // 检查输入是否被截断（缓冲区已满且无换行符）
+        size_t exprLen = strlen(expression);
+        if (exprLen == MAX_EXPR - 1 && expression[exprLen - 1] != '\n') {
+            printf("警告：表达式超过最大长度限制（%d字符），已截断。请缩短表达式。\n", MAX_EXPR - 1);
+            // 清空输入缓冲区中剩余的内容
+            int c;
+            while ((c = getchar()) != '\n' && c != EOF);
+        }
         // 去除换行符
         expression[strcspn(expression, "\n")] = 0;
         

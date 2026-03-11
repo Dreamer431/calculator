@@ -25,35 +25,53 @@ TEST_OBJ_FILES = $(addprefix $(OBJ_DIR)/, $(notdir $(TEST_OBJS)))
 # 设置vpath以查找源文件
 vpath %.c src/core src/utils test
 
+# 跨平台命令适配
+ifeq ($(OS),Windows_NT)
+    RM_DIR = rd /s /q
+    RM_FILE = del /f /q
+    MKDIR = if not exist $@ mkdir $@
+    EXE_EXT = .exe
+else
+    RM_DIR = rm -rf
+    RM_FILE = rm -f
+    MKDIR = mkdir -p $@
+    EXE_EXT =
+endif
+
 # 默认目标
 all: $(TARGET)
 
 # 测试目标
 test: $(TEST_TARGET)
-	./$(TEST_TARGET)
+	./$(TEST_TARGET)$(EXE_EXT)
 
 # 创建 build 目录
 $(OBJ_DIR):
-	if not exist $(OBJ_DIR) mkdir $(OBJ_DIR)
+	$(MKDIR)
 
 # 生成可执行文件
 $(TARGET): $(OBJ_FILES)
-	$(CC) $(OBJ_FILES) -o $(TARGET)
+	$(CC) $(OBJ_FILES) -o $(TARGET)$(EXE_EXT) -lm
 
 # 生成测试可执行文件
 $(TEST_TARGET): $(TEST_OBJ_FILES)
-	$(CC) $(TEST_OBJ_FILES) -o $(TEST_TARGET)
+	$(CC) $(TEST_OBJ_FILES) -o $(TEST_TARGET)$(EXE_EXT) -lm
 
 # 编译源文件到 build 目录
 $(OBJ_DIR)/%.o: %.c include/calculator.h | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# 清理命令（包括旧文件）
+# 清理命令（跨平台兼容）
 clean:
-	if exist $(OBJ_DIR) rd /s /q $(OBJ_DIR)
-	if exist obj rd /s /q obj
-	if exist *.o del *.o
-	if exist $(TARGET).exe del $(TARGET).exe
-	if exist $(TEST_TARGET).exe del $(TEST_TARGET).exe
+ifeq ($(OS),Windows_NT)
+	-$(RM_DIR) $(OBJ_DIR) 2>nul
+	-$(RM_DIR) obj 2>nul
+	-$(RM_FILE) *.o 2>nul
+	-$(RM_FILE) $(TARGET)$(EXE_EXT) 2>nul
+	-$(RM_FILE) $(TEST_TARGET)$(EXE_EXT) 2>nul
+else
+	$(RM_DIR) $(OBJ_DIR)
+	$(RM_FILE) $(TARGET) $(TEST_TARGET)
+endif
 
-.PHONY: clean all test 
+.PHONY: clean all test
