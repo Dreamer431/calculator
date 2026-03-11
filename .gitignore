@@ -4,6 +4,10 @@
 build/
 obj/
 
+# 忽略编译生成的可执行文件
+calculator
+test_runner
+
 # 忽略测试相关文件
 test_calculator
 test_calculator.exe
