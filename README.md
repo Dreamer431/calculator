@@ -4,7 +4,7 @@
 
 [![Language](https://img.shields.io/badge/language-C-blue.svg)](https://en.wikipedia.org/wiki/C_(programming_language))
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](#跨平台兼容性)
-[![Tests](https://img.shields.io/badge/tests-189%20passing-brightgreen.svg)](#测试)
+[![Tests](https://img.shields.io/badge/tests-207%20passing-brightgreen.svg)](#测试)
 
 ---
 
@@ -130,7 +130,7 @@ make clean
 # 编译所有源文件
 gcc -Wall -Wextra -O2 -Iinclude -Itest \
     src/core/*.c src/utils/*.c \
-    -o calculator
+    -o calculator -lm
 
 # 编译测试
 gcc -Wall -Wextra -O2 -Iinclude -Itest \
@@ -139,7 +139,7 @@ gcc -Wall -Wextra -O2 -Iinclude -Itest \
     src/core/error_handling.c \
     src/utils/*.c \
     test/*.c \
-    -o test_runner
+    -o test_runner -lm
 ```
 
 ## 使用方法
@@ -236,7 +236,7 @@ make test
 
 ## 注意事项
 
-- 表达式长度不要超过100个字符
+- 表达式长度不要超过99个字符（超过时程序会给出警告并自动截断）
 - 括号嵌套不要超过100层
 - 数值范围限制：
   - 最大值：约 1.7×10^308
@@ -260,6 +260,12 @@ make test
 | 10 | 空表达式 | 输入为空 |
 
 ## 最近更新
+
+### v2.2 (2025-03)
+- ✅ Makefile 跨平台兼容：`make` / `make test` / `make clean` 在 Linux、macOS、Windows 均可正常使用
+- ✅ 修复 Linux/macOS 下链接数学库缺失问题（`-lm`），消除 `pow`/`sin`/`cos` 等未定义引用错误
+- ✅ 表达式超过长度限制时给出明确警告并清空残留输入，避免静默截断
+- ✅ 精度控制常量添加分层注释，明确各自使用场景
 
 ### v2.1 (2024-12)
 - ✅ 修复科学计数法下溢错误信息（`1e-309` 不再错误报"数字太大"）
